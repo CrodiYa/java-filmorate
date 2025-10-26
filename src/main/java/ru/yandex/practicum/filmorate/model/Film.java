@@ -11,8 +11,8 @@ import ru.yandex.practicum.filmorate.validation.ValidReleaseDate;
 import java.time.LocalDate;
 
 /**
- * User.
- * <p>DTO to represent user
+ * Film.
+ * <p>DTO to represent film
  *
  * <p><b>Properties:
  * <ul>

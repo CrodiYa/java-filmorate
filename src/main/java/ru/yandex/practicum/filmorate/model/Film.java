@@ -1,14 +1,14 @@
 package ru.yandex.practicum.filmorate.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import ru.yandex.practicum.filmorate.validation.ValidReleaseDate;
 
 import java.time.LocalDate;
+
 
 /**
  * Film.
@@ -21,14 +21,23 @@ import java.time.LocalDate;
  *   <li><b>description</b> - Film's description, must not be over 200 characters</li>
  *   <li><b>releaseDate</b> - Film`s release date, must be after 1985-01-28</li>
  *   <li><b>duration</b> - Film's duration, must be positive</li>
+ *   <li><b>likes</b> - Film's likes, initial value is 0, read only</li>
  * </ul>
  */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class Film {
 
-    private Long id;
+@Data
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+@NoArgsConstructor
+public class Film extends StorageData {
+
+    public Film(Long id, String name, String description, LocalDate releaseDate, Integer duration) {
+        super(id);
+        this.name = name;
+        this.description = description;
+        this.releaseDate = releaseDate;
+        this.duration = duration;
+    }
 
     @NotBlank(message = "Название не может быть пустым")
     private String name;
@@ -41,4 +50,7 @@ public class Film {
 
     @Positive
     private Integer duration;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long likes = 0L;
 }

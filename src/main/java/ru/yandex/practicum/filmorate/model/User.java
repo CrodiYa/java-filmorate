@@ -3,9 +3,7 @@ package ru.yandex.practicum.filmorate.model;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PastOrPresent;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import ru.yandex.practicum.filmorate.validation.ValidLogin;
 
 import java.time.LocalDate;
@@ -24,11 +22,19 @@ import java.time.LocalDate;
  * </ul>
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+public class User extends StorageData {
 
-    private Long id;
+    public User(Long id, String email, String login, String name, LocalDate birthday) {
+        super(id);
+        this.email = email;
+        this.login = login;
+        this.name = name;
+        this.birthday = birthday;
+    }
 
     @NotBlank(message = "Почта не может быть пустой")
     @Email

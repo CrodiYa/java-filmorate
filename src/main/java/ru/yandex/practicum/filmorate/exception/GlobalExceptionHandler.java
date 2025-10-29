@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.exception;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -32,10 +34,8 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex,
             HttpServletRequest request) {
 
-        log.warn("Resolved: [{}]", ex.getClass().getName());
-        log.debug("Validation error", ex);
+        logInfo(ex, "Validation error from handleHttpMessageNotReadable");
         Map<String, String> errors = new HashMap<>();
-
 
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
@@ -43,12 +43,7 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
 
-        return ResponseEntity.badRequest().body(
-                new ApiError("Bad Request",
-                        HttpStatus.BAD_REQUEST.value(),
-                        request.getRequestURI(),
-                        errors)
-        );
+        return createBadRequest(request.getRequestURI(), errors);
     }
 
     /**
@@ -60,25 +55,60 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException ex,
             HttpServletRequest request) {
 
-        log.warn("Resolved: [{}]", ex.getClass().getName());
-        log.debug("Invalid request format", ex);
+        logInfo(ex, "Invalid request format from handleHttpMessageNotReadable");
+        return createBadRequest(request.getRequestURI(), getErrors(ex));
+    }
 
-        return ResponseEntity.badRequest().body(
-                new ApiError("Bad Request",
-                        HttpStatus.BAD_REQUEST.value(),
-                        request.getRequestURI(),
-                        getErrors(ex)
-                )
-        );
+    /**
+     * Handles business logic "not found" scenarios.
+     * Returns 404 status with descriptive message.
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiError> handleNotFoundException(
+            NotFoundException ex,
+            HttpServletRequest request) {
+
+        logInfo(ex, "Not Found from handleNotFoundException");
+
+        return createResponseEntity(
+                HttpStatus.NOT_FOUND,
+                request.getRequestURI(),
+                Map.of("error", ex.getMessage()));
+    }
+
+    /**
+     * Handles custom validation exceptions from service layer.
+     * Returns 400 status with business rule violation details.
+     */
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ApiError> handleValidationException(
+            ValidationException ex,
+            HttpServletRequest request) {
+
+        logInfo(ex, "Validation Error from handleValidationException");
+        return createBadRequest(request.getRequestURI(), Map.of("error", ex.getMessage()));
+    }
+
+    /**
+     * Handles custom validation exceptions from service layer.
+     * Returns 400 status without details dut to security reasons.
+     */
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, ConstraintViolationException.class})
+    public ResponseEntity<ApiError> handleMismatchAndConstraintViolation(
+            Exception ex,
+            HttpServletRequest request) {
+
+        logInfo(ex, "Bad Request Error from handleMismatchAndConstraintViolation");
+        return createBadRequest(request.getRequestURI(), Map.of("error", "Invalid request format"));
     }
 
     /**
      * Helper for HttpMessageNotReadableException handler
-     * Extracts meaningful error messages from JSON parsing exceptions.
+     * <p>Extracts meaningful error messages from JSON parsing exceptions.
      *
-     * @return map with error
+     * @return map with errors
      */
-    private static Map<String, String> getErrors(HttpMessageNotReadableException ex) {
+    private Map<String, String> getErrors(HttpMessageNotReadableException ex) {
         String message = "Invalid request format";
 
         if (ex.getCause() instanceof JsonParseException jpe) {
@@ -95,46 +125,34 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles business logic "not found" scenarios.
-     * Returns 404 status with descriptive message.
+     * Helper method to construct a ResponseEntity with ApiError as body
      */
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ApiError> handleNotFoundException(
-            NotFoundException ex,
-            HttpServletRequest request) {
-
-        log.warn("Resolved: [{}]", ex.getClass().getName());
-        log.debug("Not Found", ex);
-        Map<String, String> errors = new HashMap<>();
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                new ApiError("Not Found",
-                        HttpStatus.NOT_FOUND.value(),
-                        request.getRequestURI(),
-                        Map.of("error", ex.getMessage())
+    private ResponseEntity<ApiError> createResponseEntity(HttpStatus status, String URI, Map<String, String> errors) {
+        return ResponseEntity.status(status).body(
+                new ApiError(
+                        status.getReasonPhrase(),
+                        status.value(),
+                        URI,
+                        errors
                 )
         );
     }
 
     /**
-     * Handles custom validation exceptions from service layer.
-     * Returns 400 status with business rule violation details.
+     * Helper method to construct a BadRequest ResponseEntity.
      */
-    @ExceptionHandler(ValidationException.class)
-    public ResponseEntity<ApiError> handleValidationException(
-            ValidationException ex,
-            HttpServletRequest request) {
+    private ResponseEntity<ApiError> createBadRequest(String path, Map<String, String> errors) {
+        return createResponseEntity(
+                HttpStatus.BAD_REQUEST,
+                path,
+                errors);
+    }
 
-        log.warn("Resolved: [{}]", ex.getClass().getName());
-        log.debug("Validation Error", ex);
-
-        return ResponseEntity.badRequest().body(
-                new ApiError("Bad Request",
-                        HttpStatus.BAD_REQUEST.value(),
-                        request.getRequestURI(),
-                        Map.of("error", ex.getMessage())
-
-                )
-        );
+    /**
+     * Helper method to log info.
+     */
+    private void logInfo(Throwable ex, String info) {
+        log.info("Resolved: [{}] Info: [{}]", ex.getClass().getName(), info);
+        log.debug(info, ex);
     }
 }

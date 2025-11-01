@@ -4,7 +4,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import ru.yandex.practicum.filmorate.validation.ValidReleaseDate;
 
 import java.time.LocalDate;
@@ -26,18 +27,18 @@ import java.time.LocalDate;
  */
 
 @Data
-@EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
 @NoArgsConstructor
-public class Film extends StorageData {
+public class Film {
 
     public Film(Long id, String name, String description, LocalDate releaseDate, Integer duration) {
-        super(id);
+        this.id = id;
         this.name = name;
         this.description = description;
         this.releaseDate = releaseDate;
         this.duration = duration;
     }
+
+    private Long id;
 
     @NotBlank(message = "Название не может быть пустым")
     private String name;

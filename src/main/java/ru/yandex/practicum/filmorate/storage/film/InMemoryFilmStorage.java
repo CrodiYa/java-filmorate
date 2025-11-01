@@ -1,89 +1,71 @@
-package ru.yandex.practicum.filmorate.storage.film;
+package ru.yandex.practicum.filmorate.films.film;
 
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.storage.AbstractStorage;
+import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * In-memory implementation of film storage.
+ * In-memory implementation of film films.
  * <p>
- * Provides thread-safe storage for Film objects using ConcurrentHashMap with atomic ID generation.
- * Suitable for development and testing environments without persistent storage requirements.
+ * Provides thread-safe films for Film objects using ConcurrentHashMap with atomic ID generation.
+ * Suitable for development and testing environments without persistent films requirements.
  * </p>
  *
  * @see Film
  * @see FilmStorage
  */
 @Component
-public class InMemoryFilmStorage extends AbstractStorage<Film> implements FilmStorage {
+public class InMemoryFilmStorage implements FilmStorage {
 
-    private final Map<Long, Set<Long>> likes;
+    private final Map<Long, Film> films;
+    private final AtomicLong idGenerator;
 
     public InMemoryFilmStorage() {
-        super();
-        likes = new ConcurrentHashMap<>();
+        this.films = new ConcurrentHashMap<>();
+        this.idGenerator = new AtomicLong(1);
     }
 
     @Override
     public Film add(Film film) {
-        Film returnFilm = super.add(film);
-        likes.put(film.getId(), new HashSet<>());
+        film.setId(idGenerator.getAndIncrement());
+        films.put(film.getId(), film);
 
-        return returnFilm;
+        return films.get(film.getId());
+    }
+
+    @Override
+    public Film update(Film newFilm) {
+        films.put(newFilm.getId(), newFilm);
+
+        return films.get(newFilm.getId());
     }
 
     @Override
     public Film remove(Long id) {
-        Film film = super.remove(id);
-        likes.remove(film.getId());
-
-        return film;
+        return films.remove(id);
     }
 
     @Override
-    public void clear() {
-        super.clear();
-        likes.clear();
+    public Film get(Long id) {
+        return films.get(id);
     }
 
     @Override
-    public void throwIfNotFound(Long id) {
-        if (!contains(id)) {
-            throw new NotFoundException("Фильм с id = " + id + " не найден");
-        }
+    public Collection<Film> getAll() {
+        return List.copyOf(films.values());
     }
 
     @Override
-    public Film addLike(Long filmId, Long userId) {
-        Film film = get(filmId);
-
-        Set<Long> filmLikes = likes.get(filmId);
-        filmLikes.add(userId);
-        film.setLikes((long) filmLikes.size());
-
-        return film;
+    public boolean contains(Long id) {
+        return films.containsKey(id);
     }
 
     @Override
-    public Film removeLike(Long filmId, Long userId) {
-        Film film = get(filmId);
-
-        Set<Long> set = likes.get(filmId);
-        set.remove(userId);
-        film.setLikes((long) set.size());
-
-        return film;
-    }
-
-    @Override
-    public Collection<Film> getTopFilms(Long count) {
-        return getAll().stream()
-                .sorted(Comparator.comparingLong(Film::getLikes).reversed())
-                .limit(count)
-                .toList();
+    public int size() {
+        return films.size();
     }
 }

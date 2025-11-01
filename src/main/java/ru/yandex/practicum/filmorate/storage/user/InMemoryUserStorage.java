@@ -1,103 +1,72 @@
 package ru.yandex.practicum.filmorate.storage.user;
 
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.AbstractStorage;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * In-memory implementation of user storage.
+ * In-memory implementation of user users.
  * <p>
- * Provides thread-safe storage for User objects using ConcurrentHashMap with atomic ID generation.
- * Suitable for development and testing environments without persistent storage requirements.
+ * Provides thread-safe users for User objects using ConcurrentHashMap with atomic ID generation.
+ * Suitable for development and testing environments without persistent users requirements.
  * </p>
  *
  * @see User
  * @see UserStorage
  */
 @Component
-public class InMemoryUserStorage extends AbstractStorage<User> implements UserStorage {
+public class InMemoryUserStorage implements UserStorage {
 
-    private final Map<Long, Map<Long, User>> friendships;
+    private final Map<Long, User> users;
+    private final AtomicLong idGenerator;
 
     public InMemoryUserStorage() {
-        super();
-        friendships = new ConcurrentHashMap<>();
+        this.users = new ConcurrentHashMap<>();
+        this.idGenerator = new AtomicLong(1);
     }
 
     @Override
     public User add(User user) {
-        User returnUser = super.add(user);
-        friendships.put(user.getId(), new ConcurrentHashMap<>());
+        user.setId(idGenerator.getAndIncrement());
+        users.put(user.getId(), user);
 
-        return returnUser;
+        return users.get(user.getId());
+    }
+
+    @Override
+    public User update(User newUser) {
+        users.put(newUser.getId(), newUser);
+
+        return users.get(newUser.getId());
     }
 
     @Override
     public User remove(Long id) {
-        throwIfNotFound(id);
-
-        Set<Long> friendIds = friendships.get(id).keySet();
-        friendIds.forEach(friendId -> friendships.get(friendId).remove(id));
-        friendships.remove(id);
-
-        return super.remove(id);
+        return users.remove(id);
     }
 
     @Override
-    public void clear() {
-        super.clear();
-        friendships.clear();
+    public User get(Long id) {
+        return users.get(id);
     }
 
     @Override
-    public void throwIfNotFound(Long id) {
-        if (!contains(id)) {
-            throw new NotFoundException("Пользователь с id = " + id + " не найден");
-        }
+    public Collection<User> getAll() {
+        return List.copyOf(users.values());
     }
 
     @Override
-    public Collection<User> addFriend(Long senderId, Long receiverId) {
-        User receiver = get(receiverId);
-        User friend = get(senderId);
-
-        friendships.get(receiverId).put(senderId, friend);
-        friendships.get(senderId).put(receiverId, receiver);
-        return friendships.get(senderId).values();
+    public boolean contains(Long id) {
+        return users.containsKey(id);
     }
 
     @Override
-    public void deleteFriend(Long senderId, Long receiverId) {
-        throwIfNotFound(senderId);
-        throwIfNotFound(receiverId);
-
-        friendships.get(senderId).remove(receiverId);
-        friendships.get(receiverId).remove(senderId);
-    }
-
-    @Override
-    public Collection<User> getFriends(Long id) {
-        throwIfNotFound(id);
-        return friendships.get(id).values();
-    }
-
-    @Override
-    public Collection<User> getCommonFriends(Long id, Long otherId) {
-        throwIfNotFound(id);
-        throwIfNotFound(otherId);
-
-        Set<Long> friends = friendships.get(id).keySet();
-        Map<Long, User> otherFriends = friendships.get(otherId);
-
-        return friends.stream()
-                .filter(otherFriends::containsKey)
-                .map(otherFriends::get)
-                .toList();
+    public int size() {
+        return users.size();
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.user.UserService;
 
@@ -316,22 +317,23 @@ public class UserControllerTest extends ControllerTest {
         }
 
         @Test
-        public void shouldNotUpdateFilmWhenNoIdAndReturnBadRequest() throws Exception {
+        public void shouldNotUpdateUserWhenNoIdAndReturnBadRequest() throws Exception {
             User userToUpdate = new User(null, "email@mail.org", "login1", "name1", LocalDate.now());
 
             String json = objectMapper.writeValueAsString(userToUpdate);
 
+            when(userService.updateUser(userToUpdate)).thenThrow(new ValidationException(""));
 
             mockMvc.perform(put("/users")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json))
                     .andExpect(status().isBadRequest());
 
-            verify(userService, never()).updateUser(any());
+            verify(userService, times(1)).updateUser(any());
         }
 
         @Test
-        public void shouldNotUpdateFilmWhenNotFound() throws Exception {
+        public void shouldNotUpdateUserWhenNotFound() throws Exception {
             User userToUpdate = new User(1000L, "email@mail.org", "login1", "name1", LocalDate.now());
 
             when(userService.updateUser(any(User.class)))
@@ -349,17 +351,8 @@ public class UserControllerTest extends ControllerTest {
 
         @Test
         public void shouldAddFriend() throws Exception {
-            User user1 = new User(1L, "email1", "login1", "name1", LocalDate.now());
-            User user2 = new User(2L, "email2", "login2", "name2", LocalDate.now());
-
-            List<User> list = List.of(user1, user2);
-
-            when(userService.addFriend(any(), any())).thenReturn(list);
-
             mockMvc.perform(put("/users/3/friends/2"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$").isArray())
-                    .andExpect(jsonPath("$.length()").value(2));
+                    .andExpect(status().isOk());
 
             verify(userService, times(1)).addFriend(any(), any());
         }
@@ -367,9 +360,8 @@ public class UserControllerTest extends ControllerTest {
         @Test
         public void shouldReturnNotFoundWhenSenderNotFound() throws Exception {
 
-            when(userService.addFriend(1000L, 1L))
-                    .thenThrow(new NotFoundException("Пользователь с id = 1000 не найден"));
-
+            doThrow(new NotFoundException("Пользователь с id = 1000 не найден"))
+                    .when(userService).addFriend(1000L, 1L);
 
             mockMvc.perform(put("/users/1000/friends/1"))
                     .andExpect(status().isNotFound());
@@ -380,8 +372,8 @@ public class UserControllerTest extends ControllerTest {
         @Test
         public void shouldReturnNotFoundWhenReceiverNotFound() throws Exception {
 
-            when(userService.addFriend(1L, 1000L))
-                    .thenThrow(new NotFoundException("Пользователь с id = 1000 не найден"));
+            doThrow(new NotFoundException("Пользователь с id = 1000 не найден"))
+                    .when(userService).addFriend(1L, 1000L);
 
 
             mockMvc.perform(put("/users/1/friends/1000"))

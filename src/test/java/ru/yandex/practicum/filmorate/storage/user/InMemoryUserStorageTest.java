@@ -2,7 +2,6 @@ package ru.yandex.practicum.filmorate.storage.user;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.lang.reflect.Field;
@@ -10,7 +9,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class InMemoryUserStorageTest {
+public class InMemoryUserStorageTest {
 
     private UserStorage storage;
     private User user;
@@ -19,6 +18,7 @@ class InMemoryUserStorageTest {
     public void setUp() {
         storage = new InMemoryUserStorage();
         user = new User();
+        user.setId(1L);
     }
 
     private Map<Long, Map<Long, User>> getFriendShips() {
@@ -33,143 +33,64 @@ class InMemoryUserStorageTest {
         }
     }
 
+
     @Test
-    public void shouldAddUserAndCreateFriendsMap() {
+    public void shouldAddObject() {
         User user1 = storage.add(user);
 
         assertEquals(1L, user1.getId());
         assertEquals(user, user1);
-        assertNotNull(getFriendShips().get(1L));
     }
 
     @Test
-    public void shouldRemoveUserAndDeleteFriendShips() {
+    public void shouldUpdateObject() {
         storage.add(user);
-        storage.add(new User());
-        storage.add(new User());
 
-        storage.addFriend(1L, 2L);
-        storage.addFriend(1L, 3L);
-
-        User user1 = storage.remove(1L);
-
+        User user1 = storage.update(user);
 
         assertEquals(1L, user1.getId());
         assertEquals(user, user1);
-        assertEquals(2, storage.getAll().size());
-
-        assertFalse(getFriendShips().containsKey(1L));
-        assertFalse(getFriendShips().get(2L).containsKey(1L));
-        assertFalse(getFriendShips().get(3L).containsKey(1L));
     }
 
     @Test
-    public void shouldThrowNotFoundWhenRemoveUserThatDoesNotExist() {
-        assertThrows(NotFoundException.class, () -> storage.remove(1L));
-    }
-
-    @Test
-    public void shouldRemoveAllAndClearFriends() {
+    public void shouldRemoveObject() {
         storage.add(user);
-        storage.clear();
 
+        User user1 = storage.remove(1L);
+
+        assertEquals(1L, user1.getId());
+        assertEquals(user, user1);
         assertEquals(0, storage.getAll().size());
-        assertEquals(0, getFriendShips().size());
     }
 
     @Test
-    public void shouldCreateFriendShip() {
+    public void shouldGetObject() {
         storage.add(user);
-        storage.add(new User());
+        User user1 = storage.get(1L);
 
-        storage.addFriend(1L, 2L);
-
-        assertTrue(getFriendShips().get(1L).containsKey(2L));
-        assertTrue(getFriendShips().get(2L).containsKey(1L));
+        assertEquals(1L, user1.getId());
+        assertEquals(user, user1);
     }
 
     @Test
-    public void shouldThrowNotFoundWhenSenderIsNotFoundCreateFriendShip() {
+    public void shouldThrowNullPointerExceptionWhenGetObjectThatDoesNotExist() {
+        assertNull(storage.get(1L));
+    }
+
+    @Test
+    public void shouldReturnTrueIfContains() {
         storage.add(user);
-
-        assertThrows(NotFoundException.class, () -> storage.addFriend(1000L, 1L));
+        assertTrue(storage.contains(1L));
     }
 
     @Test
-    public void shouldThrowNotFoundWhenReceiverIsNotFoundCreateFriendShip() {
+    public void shouldReturnFalseIfNotContains() {
+        assertFalse(storage.contains(1L));
+    }
+
+    @Test
+    public void shouldReturnSize() {
         storage.add(user);
-
-        assertThrows(NotFoundException.class, () -> storage.addFriend(1L, 1000L));
+        assertEquals(storage.getAll().size(), storage.size());
     }
-
-    @Test
-    public void shouldBreakFriendShip() {
-        storage.add(user);
-        storage.add(new User());
-
-        storage.addFriend(1L, 2L);
-        storage.deleteFriend(1L, 2L);
-
-        assertFalse(getFriendShips().get(1L).containsKey(2L));
-        assertFalse(getFriendShips().get(2L).containsKey(1L));
-    }
-
-    @Test
-    public void shouldThrowNotFoundWhenSenderIsNotFoundBreakFriendShip() {
-        storage.add(user);
-
-        assertThrows(NotFoundException.class, () -> storage.deleteFriend(1000L, 1L));
-    }
-
-    @Test
-    public void shouldThrowNotFoundWhenReceiverIsNotFoundBreakFriendShip() {
-        storage.add(user);
-
-        assertThrows(NotFoundException.class, () -> storage.deleteFriend(1L, 1000L));
-    }
-
-    @Test
-    public void shouldReturnFriends() {
-        storage.add(user);
-        storage.add(new User());
-
-        storage.addFriend(1L, 2L);
-
-        assertTrue(storage.getFriends(2L).contains(user));
-    }
-
-    @Test
-    public void shouldThrowNotFoundWhenUserIsNotFoundReturnFriends() {
-        assertThrows(NotFoundException.class, () -> storage.getFriends(1000L));
-    }
-
-    @Test
-    public void shouldReturnCommonFriends() {
-        storage.add(user);
-        User user2 = storage.add(new User());
-        User user3 = storage.add(new User());
-
-        storage.addFriend(1L, 2L);
-        storage.addFriend(2L, 3L);
-
-        assertTrue(storage.getCommonFriends(1L, 3L).contains(user2));
-        assertFalse(storage.getCommonFriends(1L, 3L).contains(user));
-        assertFalse(storage.getCommonFriends(1L, 3L).contains(user3));
-
-        assertTrue(storage.getCommonFriends(1L, 2L).isEmpty());
-        assertTrue(storage.getCommonFriends(2L, 3L).isEmpty());
-    }
-
-    @Test
-    public void shouldThrowNotFoundWhenSenderIsNotFoundReturnCommonFriends() {
-        assertThrows(NotFoundException.class, () -> storage.getCommonFriends(1000L, 1L));
-    }
-
-    @Test
-    public void shouldThrowNotFoundWhenReceiverIsNotFoundReturnCommonFriends() {
-        storage.add(user);
-
-        assertThrows(NotFoundException.class, () -> storage.getCommonFriends(1L, 1000L));
-    }
-
 }

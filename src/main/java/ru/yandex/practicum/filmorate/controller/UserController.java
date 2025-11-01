@@ -1,29 +1,29 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.user.UserServiceInterface;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 @RequestMapping("/users")
 @Slf4j
 public class UserController {
 
-    private final HashMap<Long, User> users = new HashMap<>();
-    private final AtomicLong idGenerator = new AtomicLong();
+    private final UserServiceInterface userService;
 
     /**
-     *  Private constructor to initialize ID generator with starting ID = 1.
+     * Constructor for dependency injection
      */
-    private UserController() {
-        idGenerator.set(1);
+    public UserController(UserServiceInterface userService) {
+        this.userService = userService;
     }
 
     /**
@@ -34,8 +34,7 @@ public class UserController {
      */
     @GetMapping
     public Collection<User> getUsers() {
-        log.info("GET /users - returning {} users", users.size());
-        return users.values();
+        return userService.getAllUsers();
     }
 
     /**
@@ -46,17 +45,7 @@ public class UserController {
      */
     @PostMapping
     public User addUser(@Valid @RequestBody User user) {
-
-        user.setId(idGenerator.getAndIncrement());
-
-        if (user.getName() == null) {
-            user.setName(user.getLogin());
-        }
-
-        log.info("POST /users - User created: {}", user);
-        users.put(user.getId(), user);
-
-        return user;
+        return userService.addUser(user);
     }
 
     /**
@@ -71,24 +60,70 @@ public class UserController {
      *
      * @return updated user.
      * @throws ValidationException if ID is null or not valid
-     * @throws NotFoundException if user is not found
+     * @throws NotFoundException   if user is not found
      */
     @PutMapping
     public User updateUser(@Valid @RequestBody User newUser) {
-        if (newUser.getId() == null) {
-            throw new ValidationException("Id должен быть указан");
-        }
+        return userService.updateUser(newUser);
+    }
 
-        if (users.containsKey(newUser.getId())) {
-            User oldUser = users.get(newUser.getId());
+    /**
+     * Handles GET method.
+     * <p>Return collection of user`s friends.
+     *
+     * @param id user`s id. Must be positive number.
+     * @return collection of users.
+     * @throws NotFoundException if user is not found
+     */
+    @GetMapping("/{id}/friends")
+    public Collection<User> getFriends(@PathVariable @Positive Long id) {
+        return userService.getFriends(id);
+    }
 
-            users.put(newUser.getId(), newUser);
+    /**
+     * Handles GET method.
+     * <p>Return collection of users that are common between two users.
+     *
+     * @param id      user`s id. Must be positive number.
+     * @param otherId other user`s id. Must be positive number.
+     * @return collection of users.
+     * @throws NotFoundException if user is not found
+     */
+    @GetMapping("/{id}/friends/common/{otherId}")
+    public Collection<User> getCommonFriends(@PathVariable @Positive Long id,
+                                             @PathVariable @Positive Long otherId) {
+        return userService.getCommonFriends(id, otherId);
+    }
 
-            log.info("PUT /users - User updated: {}", oldUser);
+    /**
+     * Handles PUT method.
+     * <p> Creates friendship between two users.
+     * User`s consent is not required.
+     *
+     * @param id       user`s id. Sender. Must be positive number.
+     * @param friendId friend`s id. Receiver. Must be positive number.
+     * @throws NotFoundException   if user is not found
+     * @throws ValidationException if id equals friendId
+     */
+    @PutMapping("/{id}/friends/{friendId}")
+    public void addFriend(@PathVariable @Positive Long id,
+                          @PathVariable @Positive Long friendId) {
+        userService.addFriend(id, friendId);
+    }
 
-            return newUser;
-        }
-
-        throw new NotFoundException("Пользователь с id = " + newUser.getId() + " не найден");
+    /**
+     * Handles DELETE method.
+     * <p> Breaks friendship between two users.
+     * User`s consent is not required.
+     *
+     * @param id       user`s id. Sender. Must be positive number.
+     * @param friendId friend`s id. Receiver. Must be positive number.
+     * @throws NotFoundException if user is not found
+     */
+    @DeleteMapping("/{id}/friends/{friendId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteFriend(@PathVariable @Positive Long id,
+                             @PathVariable @Positive Long friendId) {
+        userService.deleteFriend(id, friendId);
     }
 }

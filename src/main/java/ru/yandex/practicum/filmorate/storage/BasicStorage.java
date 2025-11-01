@@ -1,18 +1,14 @@
 package ru.yandex.practicum.filmorate.storage;
 
-import ru.yandex.practicum.filmorate.model.StorageData;
-
 import java.util.Collection;
 
-public interface BasicStorage<T extends StorageData> {
+public interface BasicStorage<T> {
 
     T add(T t);
 
     T update(T t);
 
     T remove(Long id);
-
-    void clear();
 
     T get(Long id);
 
@@ -22,5 +18,4 @@ public interface BasicStorage<T extends StorageData> {
 
     int size();
 
-    void throwIfNotFound(Long id);
 }

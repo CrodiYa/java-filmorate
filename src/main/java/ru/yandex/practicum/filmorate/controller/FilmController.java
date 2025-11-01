@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.service.film.FilmService;
+import ru.yandex.practicum.filmorate.service.film.FilmServiceInterface;
 
 import java.util.Collection;
 
@@ -16,12 +16,12 @@ import java.util.Collection;
 @Slf4j
 public class FilmController {
 
-    private final FilmService filmService;
+    private final FilmServiceInterface filmService;
 
     /**
      * Constructor for dependency injection
      */
-    public FilmController(FilmService filmService) {
+    public FilmController(FilmServiceInterface filmService) {
         this.filmService = filmService;
     }
 

@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.service.user.UserService;
+import ru.yandex.practicum.filmorate.service.user.UserServiceInterface;
 
 import java.util.Collection;
 
@@ -17,12 +17,12 @@ import java.util.Collection;
 @Slf4j
 public class UserController {
 
-    private final UserService userService;
+    private final UserServiceInterface userService;
 
     /**
      * Constructor for dependency injection
      */
-    public UserController(UserService userService) {
+    public UserController(UserServiceInterface userService) {
         this.userService = userService;
     }
 
@@ -64,10 +64,6 @@ public class UserController {
      */
     @PutMapping
     public User updateUser(@Valid @RequestBody User newUser) {
-        if (newUser.getId() == null) {
-            throw new ValidationException("Id должен быть указан");
-        }
-
         return userService.updateUser(newUser);
     }
 
@@ -106,14 +102,13 @@ public class UserController {
      *
      * @param id       user`s id. Sender. Must be positive number.
      * @param friendId friend`s id. Receiver. Must be positive number.
-     * @return collection of sender friends.
      * @throws NotFoundException   if user is not found
      * @throws ValidationException if id equals friendId
      */
     @PutMapping("/{id}/friends/{friendId}")
-    public Collection<User> addFriend(@PathVariable @Positive Long id,
-                                      @PathVariable @Positive Long friendId) {
-        return userService.addFriend(id, friendId);
+    public void addFriend(@PathVariable @Positive Long id,
+                          @PathVariable @Positive Long friendId) {
+        userService.addFriend(id, friendId);
     }
 
     /**

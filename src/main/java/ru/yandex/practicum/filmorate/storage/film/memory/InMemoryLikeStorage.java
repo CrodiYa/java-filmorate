@@ -1,13 +1,15 @@
-package ru.yandex.practicum.filmorate.storage.film;
+package ru.yandex.practicum.filmorate.storage.film.memory;
 
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Repository;
+import ru.yandex.practicum.filmorate.storage.film.LikeStorage;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Component
+@Repository("MemLikeStorage")
 public class InMemoryLikeStorage implements LikeStorage {
 
     private final Map<Long, Set<Long>> likes;
@@ -16,27 +18,23 @@ public class InMemoryLikeStorage implements LikeStorage {
         this.likes = new ConcurrentHashMap<>();
     }
 
-    @Override
-    public void initializeLikesSet(Long id) {
-        likes.put(id, new HashSet<>());
-    }
 
     @Override
-    public void clearLikesSet(Long id) {
+    public void clearLikes(Long id) {
         likes.remove(id);
     }
 
     @Override
     public Long addLike(Long filmId, Long userId) {
-        likes.get(filmId).add(userId);
+        likes.computeIfAbsent(filmId, id -> new HashSet<>()).add(userId);
 
         return (long) likes.get(filmId).size();
     }
 
     @Override
     public Long deleteLike(Long filmId, Long userId) {
-        likes.get(filmId).remove(userId);
+        likes.getOrDefault(filmId, Collections.emptySet()).remove(userId);
 
-        return (long) likes.get(filmId).size();
+        return (long) likes.getOrDefault(filmId, Collections.emptySet()).size();
     }
 }

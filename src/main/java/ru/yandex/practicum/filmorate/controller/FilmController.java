@@ -37,6 +37,18 @@ public class FilmController {
     }
 
     /**
+     * Handles GET method.
+     * <p>Retrieves film from the storage.
+     *
+     * @param id film`s id. Must be positive number
+     * @return Film.
+     */
+    @GetMapping("/{id}")
+    public Film getFilm(@PathVariable @Positive Long id) {
+        return filmService.getFilm(id);
+    }
+
+    /**
      * Handles POST method.
      * <p>Creates film in storage after validation.
      *
@@ -68,6 +80,17 @@ public class FilmController {
         }
 
         return filmService.updateFilm(newFilm);
+    }
+
+    /**
+     * Handles DELETE method.
+     * <p>Deletes film from the storage.
+     *
+     * @param id film`s id. Must be positive number
+     */
+    @DeleteMapping("/{id}")
+    public void deleteFilm(@PathVariable @Positive Long id) {
+        filmService.deleteFilm(id);
     }
 
     /**

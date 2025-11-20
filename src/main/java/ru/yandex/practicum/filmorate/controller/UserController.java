@@ -38,6 +38,18 @@ public class UserController {
     }
 
     /**
+     * Handles GET method.
+     * <p>Retrieves user from the storage.
+     *
+     * @param id user`s id. Must be positive number
+     * @return User.
+     */
+    @GetMapping("/{id}")
+    public User getUser(@PathVariable @Positive Long id) {
+        return userService.getUser(id);
+    }
+
+    /**
      * Handles POST method.
      * <p>Creates user in storage after validation.
      *
@@ -65,6 +77,17 @@ public class UserController {
     @PutMapping
     public User updateUser(@Valid @RequestBody User newUser) {
         return userService.updateUser(newUser);
+    }
+
+    /**
+     * Handles DELETE method.
+     * <p>Deletes user from the storage.
+     *
+     * @param id user`s id. Must be positive number
+     */
+    @DeleteMapping("/{id}")
+    public void deleteUser(@PathVariable @Positive Long id) {
+        userService.deleteUser(id);
     }
 
     /**

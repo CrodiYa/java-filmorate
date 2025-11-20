@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -100,6 +101,33 @@ public class GlobalExceptionHandler {
 
         logInfo(ex, "Bad Request Error from handleMismatchAndConstraintViolation");
         return createBadRequest(request.getRequestURI(), Map.of("error", "Invalid request format"));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrityViolationException(
+            DataIntegrityViolationException ex,
+            HttpServletRequest request) {
+
+        logInfo(ex, "Handling DataIntegrityViolationException");
+        String msg = ex.getMessage().toLowerCase();
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        String errorMsg = "Invalid request format";
+
+        if (msg.contains("foreign key")) {
+
+            if (msg.contains("mpa")) {
+                errorMsg = "Mpa не найден";
+                status = HttpStatus.NOT_FOUND;
+            } else if (msg.contains("genre")) {
+                errorMsg = "Один из указанных жанров не найден";
+                status = HttpStatus.NOT_FOUND;
+            }
+        }
+
+        return createResponseEntity(
+                status,
+                request.getRequestURI(),
+                Map.of("error", errorMsg));
     }
 
     /**

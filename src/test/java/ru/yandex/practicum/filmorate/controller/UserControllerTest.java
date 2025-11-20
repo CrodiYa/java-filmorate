@@ -172,6 +172,63 @@ public class UserControllerTest extends ControllerTest {
 
             verify(userService, never()).getFriends(any());
         }
+
+        @Test
+        public void shouldGetUser() throws Exception {
+            when(userService.getUser(1L))
+                    .thenReturn(new User(1L, "email", "login", "name", LocalDate.MIN));
+
+            mockMvc.perform(get("/users/1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.email").value("email"));
+            verify(userService).getUser(1L);
+        }
+
+        @Test
+        public void shouldReturn404WhenUserNotFoundAndGetUser() throws Exception {
+            when(userService.getUser(1000L))
+                    .thenThrow(new NotFoundException("Not Found"));
+            mockMvc.perform(get("/users/1000")).andExpect(status().isNotFound());
+            verify(userService).getUser(any());
+        }
+
+        @Test
+        public void shouldReturn400WhenNegativeIdsAndGetUser() throws Exception {
+            mockMvc.perform(get("/users/-1")).andExpect(status().isBadRequest());
+            verify(userService, never()).getUser(any());
+        }
+
+        @Test
+        public void shouldReturn400WhenZeroUserIdAndGetUser() throws Exception {
+            mockMvc.perform(get("/users/0")).andExpect(status().isBadRequest());
+            verify(userService, never()).getUser(any());
+        }
+
+        @Test
+        public void shouldDeleteUser() throws Exception {
+            mockMvc.perform(delete("/users/1")).andExpect(status().isOk());
+            verify(userService).deleteUser(any());
+        }
+
+        @Test
+        public void shouldReturn404WhenUserNotFoundAndDeleteUser() throws Exception {
+            doThrow(new NotFoundException("Not Found")).when(userService).deleteUser(1000L);
+            mockMvc.perform(delete("/users/1000")).andExpect(status().isNotFound());
+            verify(userService).deleteUser(any());
+        }
+
+        @Test
+        public void shouldReturn400WhenNegativeIdsAndDeleteUser() throws Exception {
+            mockMvc.perform(delete("/users/-1")).andExpect(status().isBadRequest());
+            verify(userService, never()).deleteUser(any());
+        }
+
+        @Test
+        public void shouldReturn400WhenZeroUserIdAndDeleteUser() throws Exception {
+            mockMvc.perform(delete("/users/0")).andExpect(status().isBadRequest());
+            verify(userService, never()).deleteUser(any());
+        }
     }
 
     @Nested

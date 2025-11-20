@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.storage.film;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.yandex.practicum.filmorate.storage.film.memory.InMemoryLikeStorage;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -29,23 +30,9 @@ public class InMemoryLikeStorageTest {
         }
     }
 
-    @Test
-    public void shouldCreateLikesSet() {
-        storage.initializeLikesSet(1L);
-        assertNotNull(getLikesField().get(1L));
-    }
-
-    @Test
-    public void shouldRemoveSet() {
-        storage.initializeLikesSet(1L);
-        storage.clearLikesSet(1L);
-        assertNull(getLikesField().get(1L));
-    }
 
     @Test
     public void shouldAddLike() {
-        storage.initializeLikesSet(1L);
-
         storage.addLike(1L, 1L);
         storage.addLike(1L, 2L);
 
@@ -54,7 +41,6 @@ public class InMemoryLikeStorageTest {
 
     @Test
     public void shouldAddLikeOnlyOnce() {
-        storage.initializeLikesSet(1L);
 
         storage.addLike(1L, 1L);
         storage.addLike(1L, 1L);
@@ -63,13 +49,7 @@ public class InMemoryLikeStorageTest {
     }
 
     @Test
-    public void shouldThrowNullPointerExceptionWhenAddLikeToFilmThatDoesNotExist() {
-        assertThrows(NullPointerException.class, () -> storage.addLike(1L, 1L));
-    }
-
-    @Test
     public void shouldRemoveLike() {
-        storage.initializeLikesSet(1L);
 
         storage.addLike(1L, 1L);
         storage.addLike(1L, 2L);
@@ -81,7 +61,6 @@ public class InMemoryLikeStorageTest {
 
     @Test
     public void shouldRemoveLikeOnlyOnce() {
-        storage.initializeLikesSet(1L);
 
         storage.addLike(1L, 1L);
         storage.addLike(1L, 2L);
@@ -93,7 +72,9 @@ public class InMemoryLikeStorageTest {
     }
 
     @Test
-    public void shouldThrowNullPointerExceptionWhenRemoveLikeToFilmThatDoesNotExist() {
-        assertThrows(NullPointerException.class, () -> storage.deleteLike(1L, 1L));
+    public void shouldClearLikes() {
+        storage.addLike(1L, 2L);
+        storage.clearLikes(1L);
+        assertFalse(getLikesField().containsKey(1L));
     }
 }

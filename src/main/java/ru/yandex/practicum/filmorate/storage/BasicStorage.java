@@ -16,6 +16,4 @@ public interface BasicStorage<T> {
 
     boolean contains(Long id);
 
-    int size();
-
 }

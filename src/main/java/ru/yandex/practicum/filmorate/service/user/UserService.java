@@ -1,6 +1,8 @@
 package ru.yandex.practicum.filmorate.service.user;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
@@ -22,6 +24,7 @@ import java.util.Set;
  * @see UserStorage
  */
 @Service
+@Transactional
 public class UserService implements UserServiceInterface {
 
     private final UserStorage userStorage;
@@ -30,7 +33,8 @@ public class UserService implements UserServiceInterface {
     /**
      * Constructor for dependency injection
      */
-    public UserService(UserStorage userStorage, FriendShipStorage friendShipStorage) {
+    public UserService(@Qualifier("DbUserStorage") UserStorage userStorage,
+                       @Qualifier("DbFriendShipStorage") FriendShipStorage friendShipStorage) {
         this.userStorage = userStorage;
         this.friendShipStorage = friendShipStorage;
     }
@@ -69,10 +73,7 @@ public class UserService implements UserServiceInterface {
             user.setName(user.getLogin());
         }
 
-        User returnUser = userStorage.add(user);
-        friendShipStorage.initializeFriendsSet(returnUser.getId());
-
-        return returnUser;
+        return userStorage.add(user);
     }
 
     /**
@@ -103,11 +104,7 @@ public class UserService implements UserServiceInterface {
     @Override
     public void deleteUser(Long id) {
         throwIfNotFound(id);
-
-        Set<Long> friendIds = friendShipStorage.getFriends(id);
-        friendIds.forEach(friendId -> friendShipStorage.getFriends(friendId).remove(id));
-        friendShipStorage.clearFriendsSet(id);
-
+        friendShipStorage.deleteUserFromAllFriends(id);
         userStorage.remove(id);
     }
 
@@ -129,7 +126,6 @@ public class UserService implements UserServiceInterface {
         throwIfNotFound(receiverId);
 
         friendShipStorage.addFriend(senderId, receiverId);
-        friendShipStorage.addFriend(receiverId, senderId);
     }
 
     /**
@@ -146,7 +142,6 @@ public class UserService implements UserServiceInterface {
         throwIfNotFound(receiverId);
 
         friendShipStorage.deleteFriend(senderId, receiverId);
-        friendShipStorage.deleteFriend(receiverId, senderId);
     }
 
     /**
@@ -157,10 +152,7 @@ public class UserService implements UserServiceInterface {
     @Override
     public Collection<User> getFriends(Long id) {
         throwIfNotFound(id);
-
-        return friendShipStorage.getFriends(id).stream()
-                .map(userStorage::get)
-                .toList();
+        return userStorage.getAllFromCollection(friendShipStorage.getFriends(id));
     }
 
     /**
@@ -176,13 +168,8 @@ public class UserService implements UserServiceInterface {
         throwIfNotFound(id);
         throwIfNotFound(otherId);
 
-        Set<Long> friends = friendShipStorage.getFriends(id);
-        Set<Long> otherFriends = friendShipStorage.getFriends(otherId);
-
-        return friends.stream()
-                .filter(otherFriends::contains)
-                .map(userStorage::get)
-                .toList();
+        Set<Long> ids = friendShipStorage.getCommonFriends(id, otherId);
+        return userStorage.getAllFromCollection(ids);
     }
 
     @Override

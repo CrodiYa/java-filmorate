@@ -1,15 +1,17 @@
 package ru.yandex.practicum.filmorate.service.film;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.film.GenreStorage;
 import ru.yandex.practicum.filmorate.storage.film.LikeStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.Collection;
-import java.util.Comparator;
 
 /**
  * Main service for film operations and business logic.
@@ -22,19 +24,25 @@ import java.util.Comparator;
  * @see FilmStorage
  */
 @Service
+@Transactional
 public class FilmService implements FilmServiceInterface {
 
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
     private final LikeStorage likeStorage;
+    private final GenreStorage genreStorage;
 
     /**
      * Constructor for dependency injection
      */
-    public FilmService(FilmStorage filmStorage, UserStorage userStorage, LikeStorage likeStorage) {
+    public FilmService(@Qualifier("DbFilmStorage") FilmStorage filmStorage,
+                       @Qualifier("DbUserStorage") UserStorage userStorage,
+                       @Qualifier("DbLikeStorage") LikeStorage likeStorage,
+                       @Qualifier("DbGenreStorage") GenreStorage genreStorage) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
         this.likeStorage = likeStorage;
+        this.genreStorage = genreStorage;
     }
 
     /**
@@ -68,9 +76,13 @@ public class FilmService implements FilmServiceInterface {
      */
     @Override
     public Film addFilm(Film film) {
-        Film returnFilm = filmStorage.add(film);
-        likeStorage.initializeLikesSet(returnFilm.getId());
-        return returnFilm;
+        film = filmStorage.add(film);
+
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            genreStorage.addGenresToFilm(film);
+        }
+
+        return film;
     }
 
     /**
@@ -87,7 +99,13 @@ public class FilmService implements FilmServiceInterface {
         }
         throwIfNotFound(film.getId());
 
-        return filmStorage.update(film);
+        film = filmStorage.update(film);
+
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            genreStorage.updateFilmGenres(film);
+        }
+
+        return film;
     }
 
     /**
@@ -100,7 +118,7 @@ public class FilmService implements FilmServiceInterface {
     public void deleteFilm(Long id) {
         throwIfNotFound(id);
         filmStorage.remove(id);
-        likeStorage.clearLikesSet(id);
+        likeStorage.clearLikes(id);
     }
 
     /**
@@ -119,9 +137,10 @@ public class FilmService implements FilmServiceInterface {
         }
 
         Long newLikes = likeStorage.addLike(filmId, userId);
-        filmStorage.get(filmId).setLikes(newLikes);
+        Film film = filmStorage.get(filmId);
+        film.setLikes(newLikes);
 
-        return filmStorage.get(filmId);
+        return film;
     }
 
     /**
@@ -140,9 +159,10 @@ public class FilmService implements FilmServiceInterface {
         }
 
         Long newLikes = likeStorage.deleteLike(filmId, userId);
-        filmStorage.get(filmId).setLikes(newLikes);
+        Film film = filmStorage.get(filmId);
+        film.setLikes(newLikes);
 
-        return filmStorage.get(filmId);
+        return film;
     }
 
     /**
@@ -153,11 +173,7 @@ public class FilmService implements FilmServiceInterface {
      */
     @Override
     public Collection<Film> getTopFilms(Long count) {
-
-        return filmStorage.getAll().stream()
-                .sorted(Comparator.comparingLong(Film::getLikes).reversed())
-                .limit(count)
-                .toList();
+        return filmStorage.getTopFilms(count);
     }
 
     @Override

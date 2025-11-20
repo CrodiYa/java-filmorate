@@ -13,7 +13,6 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -78,13 +77,11 @@ public class UserServiceTest {
         User returnUser = new User(1L, "email@mail.com", "login", "name", LocalDate.now());
 
         when(userStorage.add(any(User.class))).thenReturn(returnUser);
-        doNothing().when(friendShipStorage).initializeFriendsSet(1L);
 
         User result = userService.addUser(user1);
 
         assertEquals(returnUser, result);
         verify(userStorage).add(any(User.class));
-        verify(friendShipStorage).initializeFriendsSet(1L);
     }
 
     @Test
@@ -189,19 +186,12 @@ public class UserServiceTest {
     @Test
     public void shouldDeleteUser() {
         Long userId = 1L;
-        User user = new User(userId, "email@mail.com", "login", "name", LocalDate.now());
 
         when(userStorage.contains(userId)).thenReturn(true);
-        when(friendShipStorage.getFriends(userId)).thenReturn(new HashSet<>(Set.of(2L, 3L)));
-        when(friendShipStorage.getFriends(2L)).thenReturn(new HashSet<>(Set.of(1L, 4L)));
-        when(friendShipStorage.getFriends(3L)).thenReturn(new HashSet<>(Set.of(1L, 5L)));
-
         userService.deleteUser(userId);
 
         verify(userStorage).remove(userId);
-        verify(friendShipStorage).clearFriendsSet(userId);
-        verify(friendShipStorage).getFriends(2L);
-        verify(friendShipStorage).getFriends(3L);
+        verify(friendShipStorage).deleteUserFromAllFriends(1L);
     }
 
     @Test
@@ -210,27 +200,6 @@ public class UserServiceTest {
 
         assertThrows(NotFoundException.class, () -> userService.deleteUser(1000L));
         verify(userStorage, never()).remove(1000L);
-        verify(friendShipStorage, never()).clearFriendsSet(1000L);
-    }
-
-    @Test
-    public void shouldRemoveUserFromFriendsFriendsLists() {
-        Long userId = 1L;
-        Set<Long> friends = Set.of(2L, 3L);
-
-        Set<Long> friend2Friends = new HashSet<>(Set.of(1L, 4L, 5L));
-        Set<Long> friend3Friends = new HashSet<>(Set.of(1L, 6L));
-
-        when(userStorage.contains(userId)).thenReturn(true);
-        when(friendShipStorage.getFriends(userId)).thenReturn(friends);
-        when(friendShipStorage.getFriends(2L)).thenReturn(friend2Friends);
-        when(friendShipStorage.getFriends(3L)).thenReturn(friend3Friends);
-
-        userService.deleteUser(userId);
-
-        assertFalse(friend2Friends.contains(userId));
-        assertFalse(friend3Friends.contains(userId));
-        verify(userStorage).remove(userId);
     }
 
     @Test
@@ -244,7 +213,7 @@ public class UserServiceTest {
         userService.addFriend(senderId, receiverId);
 
         verify(friendShipStorage).addFriend(senderId, receiverId);
-        verify(friendShipStorage).addFriend(receiverId, senderId);
+        verify(friendShipStorage, never()).addFriend(receiverId, senderId);
     }
 
     @Test
@@ -292,7 +261,7 @@ public class UserServiceTest {
         userService.deleteFriend(senderId, receiverId);
 
         verify(friendShipStorage).deleteFriend(senderId, receiverId);
-        verify(friendShipStorage).deleteFriend(receiverId, senderId);
+        verify(friendShipStorage, never()).deleteFriend(receiverId, senderId);
     }
 
     @Test
@@ -327,9 +296,7 @@ public class UserServiceTest {
 
         when(userStorage.contains(userId)).thenReturn(true);
         when(friendShipStorage.getFriends(userId)).thenReturn(friendIds);
-        when(userStorage.get(2L)).thenReturn(friend1);
-        when(userStorage.get(3L)).thenReturn(friend2);
-
+        when(userStorage.getAllFromCollection(friendIds)).thenReturn(List.of(friend1, friend2));
         Collection<User> friends = userService.getFriends(userId);
 
         assertNotNull(friends);
@@ -337,8 +304,7 @@ public class UserServiceTest {
         assertTrue(friends.contains(friend1));
         assertTrue(friends.contains(friend2));
         verify(friendShipStorage).getFriends(userId);
-        verify(userStorage).get(2L);
-        verify(userStorage).get(3L);
+        verify(userStorage).getAllFromCollection(friendIds);
     }
 
     @Test
@@ -368,19 +334,16 @@ public class UserServiceTest {
     public void shouldGetCommonFriendsSuccessfully() {
         Long user1Id = 1L;
         Long user2Id = 2L;
-        Set<Long> user1Friends = Set.of(3L, 4L, 5L);
-        Set<Long> user2Friends = Set.of(4L, 5L, 6L);
 
+        Set<Long> common = Set.of(4L, 5L);
         User commonFriend1 = new User(4L, "common1@mail.com", "common1", "Common One", LocalDate.now());
         User commonFriend2 = new User(5L, "common2@mail.com", "common2", "Common Two", LocalDate.now());
+        List<User> commonUsers = List.of(commonFriend1, commonFriend2);
 
         when(userStorage.contains(user1Id)).thenReturn(true);
         when(userStorage.contains(user2Id)).thenReturn(true);
-        when(friendShipStorage.getFriends(user1Id)).thenReturn(user1Friends);
-        when(friendShipStorage.getFriends(user2Id)).thenReturn(user2Friends);
-        when(userStorage.get(4L)).thenReturn(commonFriend1);
-        when(userStorage.get(5L)).thenReturn(commonFriend2);
-
+        when(friendShipStorage.getCommonFriends(user1Id, user2Id)).thenReturn(common);
+        when(userStorage.getAllFromCollection(common)).thenReturn(commonUsers);
         Collection<User> commonFriends = userService.getCommonFriends(user1Id, user2Id);
 
         assertNotNull(commonFriends);
@@ -393,13 +356,10 @@ public class UserServiceTest {
     public void shouldReturnEmptyCommonFriendsWhenNoCommonFriends() {
         Long user1Id = 1L;
         Long user2Id = 2L;
-        Set<Long> user1Friends = Set.of(3L, 4L);
-        Set<Long> user2Friends = Set.of(5L, 6L);
 
         when(userStorage.contains(user1Id)).thenReturn(true);
         when(userStorage.contains(user2Id)).thenReturn(true);
-        when(friendShipStorage.getFriends(user1Id)).thenReturn(user1Friends);
-        when(friendShipStorage.getFriends(user2Id)).thenReturn(user2Friends);
+        when(friendShipStorage.getCommonFriends(user1Id, user2Id)).thenReturn(Set.of());
 
         Collection<User> commonFriends = userService.getCommonFriends(user1Id, user2Id);
 

@@ -14,7 +14,7 @@ import java.util.Collection;
 @RequestMapping("/mpa")
 public class MpaController {
 
-    MpaService service;
+    private final MpaService service;
 
     public MpaController(MpaService service) {
         this.service = service;

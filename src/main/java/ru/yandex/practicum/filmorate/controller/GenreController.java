@@ -14,7 +14,7 @@ import java.util.Collection;
 @RequestMapping("/genres")
 public class GenreController {
 
-    GenreService service;
+    private final GenreService service;
 
     public GenreController(GenreService service) {
         this.service = service;

@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.storage.user;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.yandex.practicum.filmorate.storage.user.memory.InMemoryFriendShipStorage;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -32,8 +33,6 @@ public class InMemoryFriendShipStorageTest {
 
     @Test
     public void shouldCreateFriendShip() {
-        friendShipStorage.initializeFriendsSet(1L);
-        friendShipStorage.initializeFriendsSet(2L);
 
         friendShipStorage.addFriend(1L, 2L);
         friendShipStorage.addFriend(2L, 1L);
@@ -43,26 +42,14 @@ public class InMemoryFriendShipStorageTest {
     }
 
     @Test
-    public void shouldThrowNullPointerExceptionWhenSenderIsNotFoundCreateFriendShip() {
-        assertThrows(NullPointerException.class, () -> friendShipStorage.addFriend(1000L, 1L));
-    }
-
-    @Test
-    public void shouldThrowNullPointerExceptionWhenReceiverIsNotFoundCreateFriendShip() {
-        assertThrows(NullPointerException.class, () -> friendShipStorage.addFriend(1L, 1000L));
-    }
-
-    @Test
     public void shouldClearUserFriendsAndDeleteUser() {
-        friendShipStorage.initializeFriendsSet(1L);
-        friendShipStorage.clearFriendsSet(1L);
+        friendShipStorage.addFriend(1L, 2L);
+        friendShipStorage.deleteUserFromAllFriends(1L);
         assertNull(getFriendShips().get(1L));
     }
 
     @Test
     public void shouldBreakFriendShip() {
-        friendShipStorage.initializeFriendsSet(1L);
-        friendShipStorage.initializeFriendsSet(2L);
 
         friendShipStorage.addFriend(1L, 2L);
         friendShipStorage.addFriend(2L, 1L);
@@ -75,19 +62,7 @@ public class InMemoryFriendShipStorageTest {
     }
 
     @Test
-    public void shouldThrowNullPointerExceptionWhenSenderIsNotFoundBreakFriendShip() {
-        assertThrows(NullPointerException.class, () -> friendShipStorage.deleteFriend(1000L, 1L));
-    }
-
-    @Test
-    public void shouldThrowNullPointerExceptionWhenReceiverIsNotFoundBreakFriendShip() {
-        assertThrows(NullPointerException.class, () -> friendShipStorage.deleteFriend(1L, 1000L));
-    }
-
-    @Test
     public void shouldReturnFriends() {
-        friendShipStorage.initializeFriendsSet(1L);
-        friendShipStorage.initializeFriendsSet(2L);
 
         friendShipStorage.addFriend(1L, 2L);
         friendShipStorage.addFriend(2L, 1L);
@@ -96,7 +71,28 @@ public class InMemoryFriendShipStorageTest {
     }
 
     @Test
-    public void shouldThrowNullPointerExceptionWhenUserIsNotFoundReturnFriends() {
-        assertNull(friendShipStorage.getFriends(1000L));
+    public void shouldGetCommonFriends() {
+        friendShipStorage.addFriend(1L, 2L);
+        friendShipStorage.addFriend(1L, 3L);
+        friendShipStorage.addFriend(2L, 3L);
+
+        Set<Long> common = friendShipStorage.getCommonFriends(1L, 2L);
+
+        assertTrue(common.contains(3L));
+        assertFalse(common.contains(1L));
+        assertFalse(common.contains(2L));
+    }
+
+    @Test
+    public void shouldGetCommonFriendsReverseOrder() {
+        friendShipStorage.addFriend(1L, 2L);
+        friendShipStorage.addFriend(1L, 3L);
+        friendShipStorage.addFriend(2L, 3L);
+
+        Set<Long> common = friendShipStorage.getCommonFriends(2L, 1L);
+
+        assertTrue(common.contains(3L));
+        assertFalse(common.contains(1L));
+        assertFalse(common.contains(2L));
     }
 }

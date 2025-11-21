@@ -2,8 +2,11 @@ package ru.yandex.practicum.filmorate.storage.film;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ru.yandex.practicum.filmorate.films.film.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.storage.film.memory.InMemoryFilmStorage;
 import ru.yandex.practicum.filmorate.model.Film;
+
+import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -74,8 +77,47 @@ public class InMemoryFilmStorageTest {
     }
 
     @Test
-    public void shouldReturnSize() {
-        storage.add(film);
-        assertEquals(storage.getAll().size(), storage.size());
+    public void shouldReturnTopFilms() {
+        Film film1 = new Film(1L, "Film 1", "Desc 1", LocalDate.now(), 120);
+        film1.setLikes(10L);
+
+        Film film2 = new Film(2L, "Film 2", "Desc 2", LocalDate.now(), 130);
+        film2.setLikes(5L);
+
+        Film film3 = new Film(3L, "Film 3", "Desc 3", LocalDate.now(), 140);
+        film3.setLikes(15L);
+
+        storage.add(film1);
+        storage.add(film2);
+        storage.add(film3);
+
+        List<Film> top = (List<Film>) storage.getTopFilms(5L);
+
+        assertEquals(3,top.size());
+        assertEquals(film3, top.get(0));
+        assertEquals(film1, top.get(1));
+        assertEquals(film2, top.get(2));
+    }
+
+    @Test
+    public void shouldReturnOnlyTwoTopFilms() {
+        Film film1 = new Film(1L, "Film 1", "Desc 1", LocalDate.now(), 120);
+        film1.setLikes(10L);
+
+        Film film2 = new Film(2L, "Film 2", "Desc 2", LocalDate.now(), 130);
+        film2.setLikes(5L);
+
+        Film film3 = new Film(3L, "Film 3", "Desc 3", LocalDate.now(), 140);
+        film3.setLikes(15L);
+
+        storage.add(film1);
+        storage.add(film2);
+        storage.add(film3);
+
+        List<Film> top = (List<Film>) storage.getTopFilms(2L);
+
+        assertEquals(2,top.size());
+        assertEquals(film3, top.get(0));
+        assertEquals(film1, top.get(1));
     }
 }

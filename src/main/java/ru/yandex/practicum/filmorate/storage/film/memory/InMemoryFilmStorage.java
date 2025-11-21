@@ -1,10 +1,13 @@
-package ru.yandex.practicum.filmorate.films.film;
+package ru.yandex.practicum.filmorate.storage.film.memory;
 
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -18,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @see Film
  * @see FilmStorage
  */
-@Component
+@Repository("MemFilmStorage")
 public class InMemoryFilmStorage implements FilmStorage {
 
     private final Map<Long, Film> films;
@@ -33,7 +36,6 @@ public class InMemoryFilmStorage implements FilmStorage {
     public Film add(Film film) {
         film.setId(idGenerator.getAndIncrement());
         films.put(film.getId(), film);
-
         return films.get(film.getId());
     }
 
@@ -65,7 +67,10 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public int size() {
-        return films.size();
+    public Collection<Film> getTopFilms(Long count) {
+        return films.values().stream()
+                .sorted(Comparator.comparingLong(Film::getLikes).reversed())
+                .limit(count)
+                .toList();
     }
 }

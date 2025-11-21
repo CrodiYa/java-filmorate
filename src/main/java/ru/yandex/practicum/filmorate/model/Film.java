@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import ru.yandex.practicum.filmorate.validation.ValidReleaseDate;
 
 import java.time.LocalDate;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -54,4 +56,8 @@ public class Film {
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long likes = 0L;
+
+    private Mpa mpa;
+
+    private Set<Genre> genres = ConcurrentHashMap.newKeySet();
 }

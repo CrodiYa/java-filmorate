@@ -4,14 +4,18 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.service.film.FilmService;
 
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -140,6 +144,64 @@ public class FilmControllerTest extends ControllerTest {
                     .andExpect(status().isBadRequest());
 
             verify(filmService, never()).getTopFilms(any());
+        }
+
+
+        @Test
+        public void shouldGetFilm() throws Exception {
+            when(filmService.getFilm(1L))
+                    .thenReturn(new Film(1L, "name", "description", LocalDate.MAX, 100));
+
+            mockMvc.perform(get("/films/1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.name").value("name"));
+            verify(filmService).getFilm(1L);
+        }
+
+        @Test
+        public void shouldReturn404WhenFilmNotFoundAndGetFilm() throws Exception {
+            when(filmService.getFilm(1000L))
+                    .thenThrow(new NotFoundException("Not Found"));
+            mockMvc.perform(get("/films/1000")).andExpect(status().isNotFound());
+            verify(filmService).getFilm(any());
+        }
+
+        @Test
+        public void shouldReturn400WhenNegativeIdsAndGetFilm() throws Exception {
+            mockMvc.perform(get("/films/-1")).andExpect(status().isBadRequest());
+            verify(filmService, never()).getFilm(any());
+        }
+
+        @Test
+        public void shouldReturn400WhenZeroFilmIdAndGetFilm() throws Exception {
+            mockMvc.perform(get("/films/0")).andExpect(status().isBadRequest());
+            verify(filmService, never()).getFilm(any());
+        }
+
+        @Test
+        public void shouldDeleteFilm() throws Exception {
+            mockMvc.perform(delete("/films/1")).andExpect(status().isOk());
+            verify(filmService).deleteFilm(any());
+        }
+
+        @Test
+        public void shouldReturn404WhenFilmNotFoundAndDeleteFilm() throws Exception {
+            doThrow(new NotFoundException("Not Found")).when(filmService).deleteFilm(1000L);
+            mockMvc.perform(delete("/films/1000")).andExpect(status().isNotFound());
+            verify(filmService).deleteFilm(any());
+        }
+
+        @Test
+        public void shouldReturn400WhenNegativeIdsAndDeleteFilm() throws Exception {
+            mockMvc.perform(delete("/films/-1")).andExpect(status().isBadRequest());
+            verify(filmService, never()).deleteFilm(any());
+        }
+
+        @Test
+        public void shouldReturn400WhenZeroFilmIdAndDeleteFilm() throws Exception {
+            mockMvc.perform(delete("/films/0")).andExpect(status().isBadRequest());
+            verify(filmService, never()).deleteFilm(any());
         }
     }
 
@@ -283,6 +345,57 @@ public class FilmControllerTest extends ControllerTest {
 
             verify(filmService, never()).addFilm(any());
         }
+
+        @Test
+        public void shouldNotCreateFilmWhenMpaIsNotFoundAndReturnNotFound() throws Exception {
+            Film filmToCreate = new Film(null, "name", "description",
+                    LocalDate.of(2000, 1, 1), 10);
+            filmToCreate.setMpa(new Mpa(1000L, "name"));
+
+            when(filmService.addFilm(filmToCreate)).thenThrow(new DataIntegrityViolationException("foreign key mpa"));
+            String invalidJson = objectMapper.writeValueAsString(filmToCreate);
+
+
+            mockMvc.perform(post("/films")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(invalidJson))
+                    .andExpect(status().isNotFound());
+
+            verify(filmService).addFilm(any());
+        }
+
+        @Test
+        public void shouldNotCreateFilmWhenGenreIsNotFoundAndReturnNotFound() throws Exception {
+            Film filmToCreate = new Film(null, "name", "description",
+                    LocalDate.of(2000, 1, 1), 10);
+            filmToCreate.setGenres(Set.of(new Genre(1000L, "bla")));
+
+            when(filmService.addFilm(filmToCreate)).thenThrow(new DataIntegrityViolationException("foreign key genre"));
+            String invalidJson = objectMapper.writeValueAsString(filmToCreate);
+
+            mockMvc.perform(post("/films")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(invalidJson))
+                    .andExpect(status().isNotFound());
+
+            verify(filmService).addFilm(any());
+        }
+
+        @Test
+        public void shouldNotCreateFilmWhenDataBrokenAndReturnBadRequest() throws Exception {
+            Film filmToCreate = new Film(null, "name", "description",
+                    LocalDate.of(2000, 1, 1), 10);
+
+            when(filmService.addFilm(filmToCreate)).thenThrow(new DataIntegrityViolationException("something"));
+            String invalidJson = objectMapper.writeValueAsString(filmToCreate);
+
+            mockMvc.perform(post("/films")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(invalidJson))
+                    .andExpect(status().isBadRequest());
+
+            verify(filmService).addFilm(any());
+        }
     }
 
     @Nested
@@ -379,7 +492,7 @@ public class FilmControllerTest extends ControllerTest {
         }
 
         @Test
-        public void shouldNotAddLikeWhenFilmNotFound() throws Exception {
+        public void shouldNotAddLikeWhenUserNotFound() throws Exception {
             Film filmToUpdate = new Film(1000L, "ONLY TODAY", "NEW TEXT",
                     LocalDate.of(2000, 1, 1), 120);
 
@@ -397,7 +510,7 @@ public class FilmControllerTest extends ControllerTest {
         }
 
         @Test
-        public void shouldNotAddLikeWhenUserNotFound() throws Exception {
+        public void shouldNotAddLikeWhenFilmNotFound() throws Exception {
             Film filmToUpdate = new Film(1L, "ONLY TODAY", "NEW TEXT",
                     LocalDate.of(2000, 1, 1), 120);
 

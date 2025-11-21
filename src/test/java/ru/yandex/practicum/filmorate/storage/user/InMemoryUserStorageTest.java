@@ -3,8 +3,10 @@ package ru.yandex.practicum.filmorate.storage.user;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.user.memory.InMemoryUserStorage;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -89,8 +91,18 @@ public class InMemoryUserStorageTest {
     }
 
     @Test
-    public void shouldReturnSize() {
-        storage.add(user);
-        assertEquals(storage.getAll().size(), storage.size());
+    public void shouldGetAllFromCollection() {
+        List<Long> ids = List.of(1L, 2L, 3L);
+        for (int i = 0; i < 3; i++) {
+            User user = new User();
+            user.setName(i + "");
+            storage.add(user);
+        }
+
+        List<User> users = storage.getAllFromCollection(ids);
+
+        assertEquals("0", users.get(0).getName());
+        assertEquals("1", users.get(1).getName());
+        assertEquals("2", users.get(2).getName());
     }
 }

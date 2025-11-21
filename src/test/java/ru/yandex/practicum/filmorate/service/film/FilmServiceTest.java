@@ -8,14 +8,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.film.GenreStorage;
 import ru.yandex.practicum.filmorate.storage.film.LikeStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -32,11 +32,14 @@ public class FilmServiceTest {
     @Mock
     private UserStorage userStorage;
 
+    @Mock
+    private GenreStorage genreStorage;
+
     private FilmService filmService;
 
     @BeforeEach
     public void setUp() {
-        filmService = new FilmService(filmStorage, userStorage, likeStorage);
+        filmService = new FilmService(filmStorage, userStorage, likeStorage, genreStorage);
     }
 
     @Test
@@ -87,14 +90,64 @@ public class FilmServiceTest {
         Film savedFilm = new Film(1L, "New Film", "Description", LocalDate.now(), 120);
 
         when(filmStorage.add(inputFilm)).thenReturn(savedFilm);
-        doNothing().when(likeStorage).initializeLikesSet(1L);
 
         Film result = filmService.addFilm(inputFilm);
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
         verify(filmStorage).add(inputFilm);
-        verify(likeStorage).initializeLikesSet(1L);
+    }
+
+    @Test
+    public void shouldAddFilmWithGenres() {
+        Film inputFilm = new Film(null, "New Film", "Description", LocalDate.now(), 120);
+        inputFilm.setGenres(Set.of(new Genre(1L, "Комедия"), new Genre(2L, "Драма")));
+
+        Film savedFilm = new Film(1L, "New Film", "Description", LocalDate.now(), 120);
+        savedFilm.setGenres(inputFilm.getGenres());
+
+        when(filmStorage.add(inputFilm)).thenReturn(savedFilm);
+
+        Film result = filmService.addFilm(inputFilm);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        verify(filmStorage).add(inputFilm);
+        verify(genreStorage).addGenresToFilm(savedFilm);
+    }
+
+    @Test
+    public void shouldAddFilmWithoutGenres() {
+        Film inputFilm = new Film(null, "New Film", "Description", LocalDate.now(), 120);
+        inputFilm.setGenres(null);
+
+        Film savedFilm = new Film(1L, "New Film", "Description", LocalDate.now(), 120);
+
+        when(filmStorage.add(inputFilm)).thenReturn(savedFilm);
+
+        Film result = filmService.addFilm(inputFilm);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        verify(filmStorage).add(inputFilm);
+        verify(genreStorage, never()).addGenresToFilm(any());
+    }
+
+    @Test
+    public void shouldAddFilmWithEmptyGenres() {
+        Film inputFilm = new Film(null, "New Film", "Description", LocalDate.now(), 120);
+        inputFilm.setGenres(Collections.emptySet());
+
+        Film savedFilm = new Film(1L, "New Film", "Description", LocalDate.now(), 120);
+
+        when(filmStorage.add(inputFilm)).thenReturn(savedFilm);
+
+        Film result = filmService.addFilm(inputFilm);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        verify(filmStorage).add(inputFilm);
+        verify(genreStorage, never()).addGenresToFilm(any());
     }
 
     @Test
@@ -133,6 +186,43 @@ public class FilmServiceTest {
     }
 
     @Test
+    public void shouldUpdateFilmWithGenres() {
+        Film inputFilm = new Film(1L, "Updated Film", "Updated Description", LocalDate.now(), 150);
+        inputFilm.setGenres(Set.of(new Genre(1L, "Комедия"), new Genre(3L, "Мультфильм")));
+
+        Film updatedFilm = new Film(1L, "Updated Film", "Updated Description", LocalDate.now(), 150);
+        updatedFilm.setGenres(inputFilm.getGenres());
+
+        when(filmStorage.contains(1L)).thenReturn(true);
+        when(filmStorage.update(inputFilm)).thenReturn(updatedFilm);
+
+        Film result = filmService.updateFilm(inputFilm);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        verify(filmStorage).update(inputFilm);
+        verify(genreStorage).updateFilmGenres(updatedFilm);
+    }
+
+    @Test
+    public void shouldUpdateFilmWithoutGenres() {
+        Film inputFilm = new Film(1L, "Updated Film", "Updated Description", LocalDate.now(), 150);
+        inputFilm.setGenres(null);
+
+        Film updatedFilm = new Film(1L, "Updated Film", "Updated Description", LocalDate.now(), 150);
+
+        when(filmStorage.contains(1L)).thenReturn(true);
+        when(filmStorage.update(inputFilm)).thenReturn(updatedFilm);
+
+        Film result = filmService.updateFilm(inputFilm);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        verify(filmStorage).update(inputFilm);
+        verify(genreStorage, never()).updateFilmGenres(any());
+    }
+
+    @Test
     public void shouldDeleteFilmSuccessfully() {
         Long filmId = 1L;
 
@@ -141,7 +231,7 @@ public class FilmServiceTest {
         filmService.deleteFilm(filmId);
 
         verify(filmStorage).remove(filmId);
-        verify(likeStorage).clearLikesSet(filmId);
+        verify(likeStorage).clearLikes(filmId);
     }
 
     @Test
@@ -152,7 +242,7 @@ public class FilmServiceTest {
 
         assertThrows(NotFoundException.class, () -> filmService.deleteFilm(filmId));
         verify(filmStorage, never()).remove(filmId);
-        verify(likeStorage, never()).clearLikesSet(filmId);
+        verify(likeStorage, never()).clearLikes(filmId);
     }
 
     @Test
@@ -171,7 +261,7 @@ public class FilmServiceTest {
         assertNotNull(result);
         assertEquals(5L, result.getLikes());
         verify(likeStorage).addLike(filmId, userId);
-        verify(filmStorage, times(2)).get(filmId);
+        verify(filmStorage).get(filmId);
     }
 
     @Test
@@ -247,7 +337,7 @@ public class FilmServiceTest {
         Film film3 = new Film(3L, "Film 3", "Desc 3", LocalDate.now(), 130);
         film3.setLikes(5L);
 
-        when(filmStorage.getAll()).thenReturn(List.of(film1, film2, film3));
+        when(filmStorage.getTopFilms(2L)).thenReturn(List.of(film2, film1));
 
         Collection<Film> topFilms = filmService.getTopFilms(2L);
 
@@ -257,13 +347,11 @@ public class FilmServiceTest {
         List<Film> resultList = new ArrayList<>(topFilms);
         assertEquals(25L, resultList.get(0).getLikes()); // film2
         assertEquals(10L, resultList.get(1).getLikes()); // film1
+        verify(filmStorage).getTopFilms(2L);
     }
 
     @Test
     public void shouldReturnEmptyListWhenNoFilms() {
-        when(filmStorage.getAll()).thenReturn(List.of());
-
-        // when
         Collection<Film> topFilms = filmService.getTopFilms(10L);
 
         assertNotNull(topFilms);
@@ -272,17 +360,18 @@ public class FilmServiceTest {
 
     @Test
     public void shouldReturnAllFilmsWhenCountIsGreaterThanTotal() {
-        Film film1 = new Film(1L, "Film 1", "Desc 1", LocalDate.now(), 120);
-        film1.setLikes(5L);
-        Film film2 = new Film(2L, "Film 2", "Desc 2", LocalDate.now(), 150);
-        film2.setLikes(3L);
+        List<Film> allFilms = List.of(
+                new Film(1L, "Film 1", "Desc 1", LocalDate.now(), 120),
+                new Film(2L, "Film 2", "Desc 2", LocalDate.now(), 150),
+                new Film(3L, "Film 3", "Desc 3", LocalDate.now(), 130)
+        );
 
-        when(filmStorage.getAll()).thenReturn(List.of(film1, film2));
+        when(filmStorage.getTopFilms(10L)).thenReturn(allFilms);
 
-        // when
-        Collection<Film> topFilms = filmService.getTopFilms(5L);
+        Collection<Film> topFilms = filmService.getTopFilms(10L);
 
         assertNotNull(topFilms);
-        assertEquals(2, topFilms.size());
+        assertEquals(3, topFilms.size());
+        verify(filmStorage).getTopFilms(10L);
     }
 }
